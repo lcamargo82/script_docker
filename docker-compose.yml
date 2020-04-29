@@ -1,0 +1,71 @@
+version: '3.5'
+
+services:
+  egregora-sistem:
+    # build:contextrefere-se ao Dockerfileque acabamos de escrever,
+    build:
+      context: '.'
+      # argsé para o que uideu mencionei acima. Escreveremos UIDvalor no .envarquivo do aplicativo para permitir que docker-composeele seja coletado.
+      args:
+        uid: ${UID}
+    container_name: egregora-sistem
+    environment:
+      # APACHE_RUN_USERe APACHE_RUN_GROUPvariáveis ​​ENV vem com php-apache. Ao fazer isso, os arquivos gerados pelo servidor da web também terão propriedade consistente.
+      - APACHE_RUN_USER=#${UID}
+      - APACHE_RUN_GROUP=#${UID}
+    volumes:
+      # volumesA diretiva diz dockerpara montar o código-fonte do aplicativo do host /var/www/html- o que é consistente com a apacheconfiguração. Isso permite que qualquer alteração nos arquivos do host seja refletida no contêiner. Comandos como composer requireserão adicionados vendorao host, portanto, não precisaremos instalar dependências sempre que o contêiner for desativado e ativado novamente.
+      - .:/var/www/html
+    ports:
+      # portsé opcional, deixe de fora se você estiver bem em executá-lo na porta 80. Como alternativa, ele pode ser configurável usando o .envsimilar para construir argumentos:
+      # ${HOST_PORT}:80 .env HOST_PORT=8080
+      - 8000:80
+    # networkscom aliasestambém é opcional. Por padrão, docker-composecrie uma defaultrede prefixada com o nome da pasta pai para conectar todos os serviços especificados em docker-compose.yml. No entanto, se você tiver um desenvolvimento maior que 1 docker-compose, especificar um networksnome como esse permitirá que você junte-o a partir de outros docker-compose.ymlarquivos. another-appaqui será possível acessar laravel-appe vice-versa, usando o especificado aliases.
+    networks:
+      backend:
+        aliases:
+          - egregora-sistem
+
+  mysql-db:
+    image: mysql:5.7
+    container_name: mysql-db
+    volumes:
+      - ./run/var:/var/lib/mysql
+      # Idealmente, você deseja manter as alterações no banco de dados no repositório, usando uma série de migrações e propagadores. No entanto, se você deseja iniciar o contêiner mysql com um dump SQL existente, basta montar o arquivo SQL:
+      # - ./run/dump/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - MYSQL_ROOT_PASSWORD=securerootpassword
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    ports:
+      - 3306:3306
+    networks:
+      backend:
+        aliases:
+          - db
+
+networks:
+  backend:
+    name: backend-network
+
+#Iniciando o docker
+#sudo systemctl start docker    
+
+# Agora vamos construir o ambiente e colocá-lo em funcionamento. Também instalaremos dependências do compositor, bem como algum comando artesanal.
+# docker-compose build && docker-compose up -d && docker-compose logs -f
+
+# Compositor e artesão:
+# docker exec -it <nome_container> bash -c "sudo -u devuser /bin/bash"
+
+# devuser@c1ae3002d260:/var/www/html$ composer install
+
+# devuser@c1ae3002d260:/var/www/html$ php artisan key:generate
+
+# devuser@c1ae3002d260:/var/www/html$ php artisan migrate
+
+#sudo dockerd & - Linux opensuse
+
+#url de acesso é localhost:8000
+
+
